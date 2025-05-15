@@ -6,7 +6,7 @@ def main():
     model = SentenceTransformer('distiluse-base-multilingual-cased-v2')
 
     try:
-        df = pd.read_csv("random_word_sets.csv", encoding="utf-8")
+        df = pd.read_csv("./test-csv/random_word_sets.csv", encoding="utf-8")
     except FileNotFoundError:
         print("Error: The file does not exist.")
     except pd.errors.EmptyDataError:
