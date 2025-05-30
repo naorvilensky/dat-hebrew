@@ -1,20 +1,23 @@
 import os
+import threading
 import tkinter as tk
 from tkinter import filedialog, scrolledtext, messagebox
 from utils.constants import DAT_MODELS
 from utils.dat_hebrew import DatHebrew
+from utils.utils import sanitize_filename
 
 
 class FileProcessorApp:
-    def __init__(self, root):
+    def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("DAT Hebrew Transpiler")
-        self.root.geometry("600x400")
+        self.root.geometry("800x600")
 
         self.add_model_selection_dropdown()
         self.add_input_and_output_files()
         self.add_log_area()
         self.add_buttons()
+        self.dat_hebrew = DatHebrew(log_method=self.log)
 
     def add_model_selection_dropdown(self):
         self.dropdown_frame = tk.Frame(self.root)
@@ -54,10 +57,6 @@ class FileProcessorApp:
             self.file_frame, text="Browse", command=self.browse_file)
         self.browse_button.pack(side='left', padx=5)
 
-        self.dropdown_frame = tk.Frame(self.root)
-        self.dropdown_frame.pack(anchor='w', padx=20, pady=20
-                                 )
-
         # Output filename
         self.output_label = tk.Label(self.root, text="Output File Name:")
         self.output_label.pack(anchor='w', padx=10, pady=(10, 0))
@@ -81,14 +80,12 @@ class FileProcessorApp:
         self.button_frame.pack(pady=(0, 10))
 
         self.apply_button = tk.Button(
-            self.button_frame, text="Apply", command=self.apply)
+            self.button_frame, text="Apply", command=self.threaded_apply)
         self.apply_button.pack(side='left', padx=5)
 
         self.clear_button = tk.Button(
             self.button_frame, text="Clear Logs", command=self.clear_logs)
         self.clear_button.pack(side='left', padx=5)
-
-        self.dat_hebrew = DatHebrew(lambda l: self.log(l))
 
     def browse_file(self):
         filepath = filedialog.askopenfilename(initialdir=os.getcwd())
@@ -98,8 +95,11 @@ class FileProcessorApp:
             base, ext = os.path.splitext(self.file_entry.get())
             self.output_entry.delete(0, tk.END)
             self.output_entry.insert(
-                0, base + f'_{self.selected_model.get()}_answers' + ext)
+                0, base + f'_{sanitize_filename(self.selected_model.get())}_answers' + ext)
             self.log(f"Selected file: {filepath}")
+
+    def threaded_apply(self):
+        threading.Thread(target=self.apply, daemon=True).start()
 
     def apply(self):
         input_file = self.file_entry.get()
@@ -126,7 +126,7 @@ class FileProcessorApp:
         self.log_area.delete('1.0', tk.END)
         self.log_area.config(state='disabled')
 
-    def log(self, message):
+    def log(self, message: str):
         self.log_area.config(state='normal')
         self.log_area.insert(tk.END, message + "\n")
         self.log_area.see(tk.END)

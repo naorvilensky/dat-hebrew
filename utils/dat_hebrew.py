@@ -1,6 +1,9 @@
+import os
 from typing import Callable
 import pandas as pd
 from sentence_transformers import SentenceTransformer, util
+from huggingface_hub.constants import HF_HUB_CACHE
+import os
 
 from utils.constants import DAT_MODELS, DAT_MODELS_LITERAL
 
@@ -12,7 +15,7 @@ class DatHebrew():
     used_models: list[DAT_MODELS_LITERAL]
     log_method: Callable[[str], None]
 
-    def __init__(self, log_method: Callable[[str], None], used_model: DAT_MODELS_LITERAL = None):
+    def __init__(self, log_method: Callable[[str], None], used_model: DAT_MODELS_LITERAL = DAT_MODELS[0]):
         self.input_path = None
         self.output_path = None
         self.log_method = log_method
@@ -40,17 +43,39 @@ class DatHebrew():
 
         return (total / count).item()
 
+    def load_model_with_logging(self, model_name: str) -> SentenceTransformer:
+        self.log_method(f"Checking local cache for model: {model_name}")
+        self.log_method(f"Hugging Face cache location: {HF_HUB_CACHE}")
+
+        # Construct expected cache path
+        safe_repo = model_name.replace("/", "--")
+        model_dir = os.path.join(HF_HUB_CACHE, f"models--{safe_repo}")
+
+        if os.path.exists(model_dir):
+            self.log_method("Model found in local cache.")
+        else:
+            self.log_method("Model not found in cache. Downloading...")
+
+        # Load the model (will download if not cached)
+        try:
+            model = SentenceTransformer(model_name)
+            self.log_method(f"Model '{model_name}' loaded successfully.")
+            return model
+        except Exception as e:
+            self.log_method(f"Error loading model '{model_name}': {e}")
+            raise e
+
     def computed_and_write_to_file(self, is_write: bool = True) -> pd.DataFrame:
         if self.input_path is None or (self.output_path is None and is_write is True):
             raise Exception(
                 f"No input or output path selected: ({self.input_path}, {self.output_path})")
 
-        model = SentenceTransformer(self.used_model)
+        model = self.load_model_with_logging(self.used_model)
 
         try:
             df = pd.read_excel(self.input_path)
         except FileNotFoundError:
-            self.log_method_method("Error: The file does not exist.")
+            self.log_method("Error: The file does not exist.")
             return
         except pd.errors.EmptyDataError:
             self.log_method("Error: The file is empty.")
