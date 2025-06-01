@@ -6,6 +6,7 @@ from huggingface_hub.constants import HF_HUB_CACHE
 import os
 
 from utils.constants import DAT_MODELS, DAT_MODELS_LITERAL
+from utils.main_embedder import ManualEmbedder
 
 
 class DatHebrew():
@@ -31,7 +32,7 @@ class DatHebrew():
         self.output_path = output_path
 
     def compute_dat_score(self, words, model):
-        embeddings = model.encode(words, convert_to_tensor=True)
+        embeddings = model.encode(words)
         cosine_scores = util.pytorch_cos_sim(embeddings, embeddings)
 
         total = 0
@@ -58,7 +59,7 @@ class DatHebrew():
 
         # Load the model (will download if not cached)
         try:
-            model = SentenceTransformer(model_name)
+            model = ManualEmbedder(model_name)
             self.log_method(f"Model '{model_name}' loaded successfully.")
             return model
         except Exception as e:
